@@ -2,7 +2,7 @@ import os
 from pyspark.sql import SparkSession # type: ignore
 
 
-def config_and_start_spark_session() -> SparkSession:
+def config_and_start_spark_session(session_name: str = 'lakehouse') -> SparkSession:
     os.environ['SPARK_HOME'] = '/Library/spark-4.0.0-bin-hadoop3'
     os.environ['JAVA_HOME'] = '/opt/homebrew/opt/openjdk@17'
     os.environ['PYSPARK_PYTHON'] = 'python'
@@ -17,12 +17,12 @@ def config_and_start_spark_session() -> SparkSession:
     # compatible versions of delta lake v2.13.4.0.0 https://mvnrepository.com/artifact/io.delta/delta-spark_2.13/4.0.0
     spark_packages = ','.join([
         'io.delta:delta-spark_2.13:4.0.0', # delta lake package
-        'org.apache.hadoop:hadoop-aws:3.4.0', # hadoop aws for s3. must match with the version defined in the $SPARK_HOME env
-        'software.amazon.awssdk:bundle:2.23.19' # aws sdk for java. check the compatible version with hadoop from the official Marven site - https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-aws/3.4.0
+        'org.apache.hadoop:hadoop-aws:3.4.0', # hadoop aws
+        'com.amazonaws:aws-java-sdk-bundle:1.12.262', # aws sdk for java.
     ])
 
     # config spark session including the spark pakages and aws credentials
-    spark = SparkSession.builder.appName('Silver') \
+    spark = SparkSession.builder.appName(session_name) \
         .config('spark.jars.packages', spark_packages) \
         .config('spark.sql.extensions', 'io.delta.sql.DeltaSparkSessionExtension') \
         .config('spark.sql.catalog.spark_catalog', 'org.apache.spark.sql.delta.catalog.DeltaCatalog') \
@@ -30,6 +30,8 @@ def config_and_start_spark_session() -> SparkSession:
         .config('spark.hadoop.fs.s3a.access.key', AWS_ACCESS_KEY_ID) \
         .config('spark.hadoop.fs.s3a.secret.key', AWS_SECRET_ACCESS_KEY) \
         .config('spark.hadoop.fs.s3a.endpoint', f's3.{AWS_REGION}.amazonaws.com') \
+        .config('spark.hadoop.fs.s3a.aws.credentials.provider',
+                'org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider') \
         .getOrCreate()
 
     return spark

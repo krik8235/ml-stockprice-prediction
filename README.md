@@ -1,5 +1,4 @@
-# Data Pipeline on Lakehouse Architecture
-
+# Delta Lake Lakehouse Architecture with Spark and Airflow DAGs
 
 
 ## Table of Content
@@ -18,9 +17,10 @@
 ```bash
 uv venv
 source .venv/bin/activate
-uv run spark-submit --packages io.delta:delta-spark_2.13:4.0.0,org.apache.hadoop:hadoop-aws:3.4.0,software.amazon.awssdk:bundle:2.23.19 src/main.py
+uv run spark-submit --packages io.delta:delta-spark_2.13:4.0.0,org.apache.hadoop:hadoop-aws:3.4.0,com.amazonaws:aws-java-sdk-bundle:1.12.262 src/main.py {TICKER} --cache-clear
 ```
 
+(Replace *{TICKER}* with a ticker of your choice.)
 
 
 <hr />

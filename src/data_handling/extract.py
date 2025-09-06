@@ -11,7 +11,7 @@ def extract_daily_stock_data(ticker: str = 'NVDA', function: str = 'TIME_SERIES_
 
     API_URL = 'https://www.alphavantage.co/query'
     api_key = os.environ.get('API_KEY', None)
-    if not api_key: pass
+    if not api_key: main_logger.error('... missing api key ...'); raise
 
     params = {
         'function': function,

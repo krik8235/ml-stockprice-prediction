@@ -1,29 +1,39 @@
 import os
 import shutil
-import json
-import pandas as pd
-from pyspark.sql import SparkSession # type: ignore
-from pyspark.sql.functions import col, to_timestamp, regexp_replace # type: ignore
+from pyspark.sql.functions import col, expr # type: ignore
 
 from src._utils import main_logger
 
 
-def process(delta_table) -> pd.DataFrame:
-    # preprocess and transform bronze data and store in the silver table
+
+def process(delta_table):
     main_logger.info('... pre-processing and transforming data for the silver layer ...')
 
-    # data clearning and type casting
-    silver_df = delta_table.select(
-        col('dt').cast('date').alias('dt'), # cast the timestamp to date type
-        col('open').cast('float'), # cast all price columns to float
-        col('high').cast('float'),
-        col('low').cast('float'),
-        col('close').cast('float'),
-        col('volume').cast('integer') # cast to integer
-    )
-    main_logger.info(f'... transformed data schema in the silver layer: \n{silver_df.printSchema()}')
+    # get all the date-like column names
+    date_columns = delta_table.columns
 
-    return silver_df
+    # build the expression for the stack function
+    stack_expr = f'stack({len(date_columns)}, '
+    for date_col in date_columns:
+        stack_expr += f'"{date_col}", `{date_col}`, '
+
+    stack_expr = stack_expr.strip(', ') + ')'
+
+    # use stack to unpivot the data from wide to tall format
+    silver_df = delta_table.select(expr(stack_expr).alias('dt_string', 'values'))
+
+    # process the unpivoted df to cast types and rename columns
+    final_df = silver_df.select(
+       col('dt_string').cast('date').alias('dt'),
+        col('values').getItem('1. open').cast('float').alias('open'),
+        col('values').getItem('2. high').cast('float').alias('high'),
+        col('values').getItem('3. low').cast('float').alias('low'),
+        col('values').getItem('4. close').cast('float').alias('close'),
+        col('values').getItem('5. volume').cast('integer').alias('volume')
+    )
+
+    main_logger.info(f'... transformed data schema in the silver layer: {final_df.printSchema()}')
+    return final_df
 
 
 

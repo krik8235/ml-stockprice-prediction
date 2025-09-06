@@ -1,13 +1,12 @@
 import os
 import shutil
-import pandas as pd
 from pyspark.sql.functions import col, avg, sum # type: ignore
 from pyspark.sql.window import Window # type: ignore
 
 from src._utils import main_logger
 
 
-def process(delta_table) -> pd.DataFrame:
+def process(delta_table):
     # perform feature engineering
     main_logger.info('... aggregating and transforming data for the gold layer ...')
 

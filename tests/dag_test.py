@@ -17,13 +17,13 @@ def _run_pyspark_job():
 def create_test_dag():
     default_args = {
         'owner': 'kuriko iwai',
-        'start_date': datetime.datetime(2025, 10, 9), #use a fixed date for reproducible tests
+        'start_date': datetime.datetime(2025, 10, 9), # use a fixed date for reproducible tests
         'retries': 1,
     }
     with DAG(
-        dag_id='pyspark_gold_layer_etl',
+        dag_id='pyspark_pytest',
         default_args=default_args,
-        description='A daily ETL job to process stock data into the gold layer.',
+        description='mock',
         schedule='@daily',
         catchup=False,
         tags=['pyspark', 'etl', 'gold-layer'],
@@ -37,24 +37,15 @@ def create_test_dag():
     return dag
 
 
-def test_dag_is_valid():
-    """
-    Checks that the DAG is a valid object after creation.
-    """
-
-    # if the dag object is created without a parse error
-    dag = create_test_dag()
-    assert dag is not None
-
-
 def test_dag_properties():
     """
     Tests that the DAG's basic properties are correctly defined.
     """
     dag = create_test_dag()
-    assert dag.dag_id == 'pyspark_gold_layer_etl'
+    assert dag is not None
+    assert dag.dag_id == 'pyspark_pytest'
     assert dag.owner == 'kuriko iwai'
-    assert dag.description == 'A daily ETL job to process stock data into the gold layer.'
+    assert dag.description == 'mock'
     assert dag.schedule == '@daily'
     assert 'pyspark' in dag.tags
     assert 'etl' in dag.tags
