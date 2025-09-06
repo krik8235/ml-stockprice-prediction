@@ -4,7 +4,7 @@ from airflow.operators.python import PythonOperator  # type: ignore
 from pydeequ.checks import Check, CheckLevel # type: ignore
 from pydeequ.verification import VerificationSuite, VerificationResult # type: ignore
 
-from src import main
+from src.main import run_lakehouse
 from src.data_handling.spark import config_and_start_spark_session
 
 # define the airflow dag
@@ -58,7 +58,7 @@ with DAG(
     # daily load of the latest stockprice
     run_pyspark_task = PythonOperator(
         task_id='elt_lakehouse',
-        python_callable=main,
+        python_callable=run_lakehouse,
     )
 
      # weekly data quality check for data drift
