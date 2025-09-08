@@ -56,45 +56,11 @@ if __name__ == '__main__':
     # data processing
     df, spark = run_lakehouse(ticker=TICKER)
 
-
     # pandas df
     if df is None:
         df_local_file_path = os.path.join('data', 'df', TICKER, 'df.parquet')
         df = pd.read_parquet(df_local_file_path)
 
     df.info()
-
-
-    # create target and input vals
-    target_col = 'close'
-    y = df.copy()[target_col].shift(-1) # avoid data leakage
-    y = y.iloc[:-1] # drop the last row (y = nan)
-
-    input_cols = [col for col in df.columns if col not in [target_col, 'dt']] # drop dt as year, month, date can capture sequence
-    X = df.copy()[input_cols]
-    X = X.iloc[:-1] # drop the last row
-
-    # create train, val, test datasets
-    from sklearn.model_selection import train_test_split
-    X_tv, X_test, y_tv, y_test = train_test_split(X, y, test_size=1000, shuffle=False, random_state=42)
-    X_train, X_val, y_train, y_val = train_test_split(X_tv, y_tv, test_size=1000, shuffle=False, random_state=42)
-
-
-    from sklearn.preprocessing import StandardScaler, OneHotEncoder
-    from sklearn.compose import ColumnTransformer
-
-    cat_cols = ['year', 'month', 'date']
-    num_cols = list(set(input_cols) - set(cat_cols))
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', StandardScaler(), num_cols),
-            ('cat', OneHotEncoder(), cat_cols)
-        ]
-    )
-
-    X_train = preprocessor.fit_transform(X_train)
-    X_val = preprocessor.transform(X_val)
-    X_test = preprocessor.transform(X_test)
 
     spark.stop()
