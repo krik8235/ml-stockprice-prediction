@@ -1,12 +1,23 @@
 import os
-import shutil
-from pyspark.sql.functions import col, expr, to_date # type: ignore
+import pandas as pd
+from deltalake import DeltaTable, write_deltalake
+from pyspark.sql.functions import col, expr, to_date
 from pyspark.sql.types import StructType, StructField, DateType, FloatType, IntegerType
 
 from src._utils import main_logger
 
 
-def process(delta_table, spark):
+SILVER_SCHEMA = StructType([
+    StructField('dt', DateType(), False),
+    StructField('open', FloatType(), False),
+    StructField('high', FloatType(), False),
+    StructField('low', FloatType(), False),
+    StructField('close', FloatType(), False),
+    StructField('volume', IntegerType(), False)
+])
+
+
+def transform(delta_table, spark):
     main_logger.info('... pre-processing and transforming data for the silver layer ...')
 
     # get all the date-like column names
@@ -32,18 +43,8 @@ def process(delta_table, spark):
         col('values').getItem('5. volume').cast('integer').alias('volume')
     ).where(col('dt').isNotNull())
 
-    # explicitly define schema
-    schema = StructType([
-        StructField('dt', DateType(), False), # explicitly set nullable = false
-        StructField('open', FloatType(), False),
-        StructField('high', FloatType(), False),
-        StructField('low', FloatType(), False),
-        StructField('close', FloatType(), False),
-        StructField('volume', IntegerType(), False)
-    ])
-
     # finalize df
-    silver_df = spark.createDataFrame(silver_df.collect(), schema=schema)
+    silver_df = spark.createDataFrame(silver_df.collect(), schema=SILVER_SCHEMA)
 
     main_logger.info(f'... transformed data schema in the silver layer:\n')
     silver_df.printSchema()
@@ -52,23 +53,46 @@ def process(delta_table, spark):
 
 
 def load(df, ticker: str = 'NVDA', should_local_save: bool = True) -> str:
+    # silver s3 path
     silver_local_path = os.path.join('data', 'silver', ticker)
-
-    # clean up previous run's data for a fresh start
-    if os.path.exists(silver_local_path):
-        main_logger.info(f'... cleaning up existing silver layer data at {silver_local_path} ...')
-        shutil.rmtree(silver_local_path)
-
-    # store as a parquet file in local
-    if should_local_save:
-        os.makedirs(silver_local_path, exist_ok=True)
-        df.write.format('parquet').mode('overwrite').option('overwriteSchema', 'true').save(silver_local_path)
-
-    # write the df in the silver layer as a new delta table and store it in s3
     S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', 'ml-stockprice-pred')
     silver_s3_path = f's3a://{S3_BUCKET_NAME}/data/silver/{ticker}'
 
-    df.write.format('delta').mode('overwrite').option('overwriteSchema', 'true').save(silver_s3_path)
-    main_logger.info(f'... pyspark df successfully written to the silver layer at {silver_s3_path} ...')
+    # convert df to pandas df
+    pandas_df = df if isinstance(df, pd.DataFrame) else df.toPandas()
+
+    # check if delta table exists
+    try:
+        # load the existing Delta Table using the native deltalake api
+        silver_table = DeltaTable(silver_s3_path)
+
+        # merge w/ unique key 'dt'
+        merger = silver_table.merge(
+            source=pandas_df,
+            predicate="target.dt = source.dt",
+            source_alias='source',
+            target_alias='target',
+        )
+        # update when matched, insert when not matched (new record)
+        merger.when_matched_update_all().when_not_matched_insert_all().execute()
+        main_logger.info(f'... successfully merged at {silver_s3_path} ...')
+
+    # if delta table not exist
+    except:
+        main_logger.info(f'... silver table not found. creating ...')
+        write_deltalake(
+            silver_s3_path,
+            pandas_df,
+            mode='overwrite',
+            storage_options={"AWS_REGION": os.environ.get('AWS_REGION', 'us-east-1')}
+        )
+        main_logger.info(f'... single record appended to local silver data at {silver_local_path} ...')
+
+
+    # local saving (optional for ol consistency)
+    if should_local_save:
+        os.makedirs(silver_local_path, exist_ok=True)
+        df.write.format('parquet').mode('append').option('overwriteSchema', 'true').save(silver_local_path)
+        main_logger.info(f'... single record appended to local silver data at {silver_local_path} ...')
 
     return silver_s3_path

@@ -1,24 +1,30 @@
 import os
 import json
 import shutil
-import boto3 # type: ignore
+import boto3
 
 from src._utils import main_logger
 
 
-
+# load the raw data to s3
 def load_to_s3(data, ticker: str = 'NVDA', should_local_save: bool = True) -> str:
     if not data: main_logger.error('missing data'); raise
 
+    try:
+        latest_date = next(iter(data.keys()))
+    except:
+        main_logger.error('... data dictionary is empty ...')
+        return ""
 
     # define file path
     folder_path = os.path.join('data', 'bronze', ticker)
     if os.path.exists(folder_path): shutil.rmtree(folder_path) # clean up previous run's data for a fresh start
 
-    file_name = f'{ticker}_bronze.json'
+    folder_path = os.path.join('data', 'bronze', ticker, latest_date)
+    file_name = f'{ticker}_{latest_date}_bronze.json'
     file_path = os.path.join(folder_path, file_name)
 
-    # local load
+    # local load (optional for ol. for testing and debugging)
     if should_local_save:
         os.makedirs(folder_path, exist_ok=True)
         with open(file_path, 'w') as f:
@@ -27,7 +33,7 @@ def load_to_s3(data, ticker: str = 'NVDA', should_local_save: bool = True) -> st
 
     # s3 load using s3a schema
     S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', 'ml-stockprice-pred')
-    s3_key = file_path
+    s3_key = os.path.join('data', 'bronze', ticker, f'dt={latest_date}', file_name)
     bronze_s3_path = f's3a://{S3_BUCKET_NAME}/{s3_key}'
 
     # convert to a json string

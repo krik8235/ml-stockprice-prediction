@@ -7,6 +7,7 @@
 
 - [Quick Start](#quick-start)
 - [Package Management](#package-management)
+- [Running local](#running-local)
 - [Pre-commit hooks](#pre-commit-hooks)
 - [Testing](#testing)
 
@@ -41,6 +42,17 @@ uv venv
 source .venv/bin/activate
 uv sync
 ```
+
+<hr />
+
+
+## Running local
+
+```bash
+EXPORT RUST_LOG="info,datafusion_datasource_parquet=error"
+uv run src/main.py --cache-clear
+```
+
 
 <hr />
 

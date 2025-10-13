@@ -1,8 +1,10 @@
 import os
-from pyspark.sql import SparkSession # type: ignore
+from pyspark.sql import SparkSession
+from dotenv import load_dotenv
 
 
 def config_and_start_spark_session(session_name: str = 'lakehouse', log_level: str = 'ERROR') -> SparkSession:
+    load_dotenv(override=True)
     os.environ['SPARK_HOME'] = '/Library/spark-4.0.0-bin-hadoop3'
     os.environ['JAVA_HOME'] = '/opt/homebrew/opt/openjdk@17'
     os.environ['PYSPARK_PYTHON'] = 'python'

@@ -1,8 +1,8 @@
 import datetime
-from airflow import DAG # type: ignore
-from airflow.operators.python import PythonOperator  # type: ignore
-from pydeequ.checks import Check, CheckLevel # type: ignore
-from pydeequ.verification import VerificationSuite, VerificationResult # type: ignore
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from pydeequ.checks import Check, CheckLevel
+from pydeequ.verification import VerificationSuite, VerificationResult
 
 from src.main import run_lakehouse
 from src.data_handling.spark import config_and_start_spark_session

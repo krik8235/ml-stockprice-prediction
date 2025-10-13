@@ -1,6 +1,8 @@
 import os
 import sys
 import pandas as pd
+from dotenv import load_dotenv
+
 
 import src.data_handling as data_handling
 from src._utils import main_logger
@@ -20,12 +22,12 @@ def run_lakehouse(ticker:str = 'NVDA', should_local_save: bool = True):
 
     # silver
     bronze_delta_table = spark.read.json(bronze_s3_path, multiLine=True)
-    silver_df = data_handling.silver.process(delta_table=bronze_delta_table, spark=spark)
+    silver_df = data_handling.silver.transform(delta_table=bronze_delta_table, spark=spark)
     silver_s3_path = data_handling.silver.load(df=silver_df, ticker=ticker)
 
     # gold
     silver_delta_table = data_handling.retrieve_delta_table(spark=spark, s3_path=silver_s3_path)
-    gold_df = data_handling.gold.process(delta_table=silver_delta_table, spark=spark)
+    gold_df = data_handling.gold.transform(delta_table=silver_delta_table, spark=spark)
     gold_s3_path = data_handling.gold.load(df=gold_df, ticker=ticker)
 
     if gold_df and should_local_save:
