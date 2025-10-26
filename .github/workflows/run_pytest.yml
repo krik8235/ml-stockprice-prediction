@@ -61,6 +61,6 @@ jobs:
           pip install -r requirements.txt
 
       - name: run pytest
-        run: pytest
+        run: python -m pytest
         # env:
         #   PYTEST_RUN: true
