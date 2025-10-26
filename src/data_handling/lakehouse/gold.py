@@ -3,7 +3,7 @@ import pandas as pd
 from deltalake import DeltaTable, write_deltalake
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window
-from pyspark.sql.types import StructType, StructField, DateType, FloatType, IntegerType, StringType
+from pyspark.sql.types import StructType, StructField, DateType, FloatType, IntegerType, LongType
 from dotenv import load_dotenv
 
 from src._utils import main_logger
@@ -15,8 +15,8 @@ GOLD_SCHEMA = StructType([
     StructField('high', FloatType(), False),
     StructField('low', FloatType(), False),
     StructField('close', FloatType(), False),
-    StructField('close_log', FloatType(), False),
     StructField('volume', IntegerType(), False),
+    StructField('timestamp_in_ms', LongType(), False),
     StructField('ave_open', FloatType(), False),
     StructField('ave_high', FloatType(), False),
     StructField('ave_low', FloatType(), False),
@@ -29,7 +29,7 @@ GOLD_SCHEMA = StructType([
 ])
 
 
-def transform(delta_table, spark):
+def transform(delta_table, spark, should_filter: bool = False):
     load_dotenv(override=True)
 
     # find latest data row
@@ -52,19 +52,19 @@ def transform(delta_table, spark):
     _gold_df = _gold_df.withColumn('date', F.dayofmonth(F.col('dt')).cast(IntegerType()))
 
     # log transform close
-    _gold_df = _gold_df.withColumn('close_log', F.log1p(F.col('close')))
+    _gold_df = _gold_df.withColumn('close', F.log1p(F.col('close')))
 
     # select final columns
     final_cols = [
-        'dt', 'open', 'high', 'low', 'close', 'close_log', 'volume',
+        'dt', 'open', 'high', 'low', 'close', 'volume', 'timestamp_in_ms',
         F.col('open').alias('ave_open'), F.col('high').alias('ave_high'),
         F.col('low').alias('ave_low'), F.col('close').alias('ave_close'),
         F.col('volume').alias('total_volume'), '30_day_ma_close', 'year', 'month', 'date'
     ]
-    gold_df_full = _gold_df.select(*final_cols)
+    gold_df = _gold_df.select(*final_cols)
 
     # filter result w/ latest_dt (python obj)
-    gold_df = gold_df_full.filter(F.col('dt') == latest_dt)
+    if should_filter: gold_df = gold_df.filter(F.col('dt') == latest_dt)
 
     # finalize
     gold_df = gold_df.orderBy(F.col('dt').asc())

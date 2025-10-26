@@ -1,21 +1,22 @@
 import os
-import sys
+import argparse
 import pandas as pd
-from dotenv import load_dotenv
-
+from pyspark.sql import SparkSession
 
 import src.data_handling as data_handling
+from src import TICKER
 from src._utils import main_logger
 
 
-def run_lakehouse(ticker:str = 'NVDA', should_local_save: bool = True):
+
+def run_lakehouse(ticker: str = TICKER, should_local_save: bool = False) -> tuple[pd.DataFrame, SparkSession]:
     df = None
 
     # extract
-    stock_price_data = data_handling.extract_daily_stock_data(ticker=ticker)
+    stock_price_data = data_handling.extract(ticker=ticker)
 
     # bronze
-    bronze_s3_path = data_handling.bronze.load_to_s3(data=stock_price_data, ticker=ticker)
+    bronze_s3_path = data_handling.bronze.load(data=stock_price_data, ticker=ticker)
 
     # start the spark session
     spark = data_handling.config_and_start_spark_session()
@@ -30,12 +31,13 @@ def run_lakehouse(ticker:str = 'NVDA', should_local_save: bool = True):
     gold_df = data_handling.gold.transform(delta_table=silver_delta_table, spark=spark)
     gold_s3_path = data_handling.gold.load(df=gold_df, ticker=ticker)
 
+    df = gold_df.toPandas()
+
     if gold_df and should_local_save:
         # save gold_df as pandas df in parquet / csv file
-        df = gold_df.toPandas()
         df['dt'] = pd.to_datetime(df['dt'])
 
-        df_folder_path = os.path.join('data', 'df', TICKER)
+        df_folder_path = os.path.join('data', 'df', ticker)
         os.makedirs(df_folder_path, exist_ok=True)
 
         df_parquet_file_name = 'df.parquet'
@@ -53,14 +55,16 @@ def run_lakehouse(ticker:str = 'NVDA', should_local_save: bool = True):
 
 
 if __name__ == '__main__':
-    TICKER = sys.argv[1] if len(sys.argv) > 2 and sys.argv[1] else 'NVDA'
+    parser = argparse.ArgumentParser(description="run batch learning")
+    parser.add_argument('--ticker', type=str, default=TICKER, help="ticker")
+    args = parser.parse_args()
 
-    # data processing
-    df, spark = run_lakehouse(ticker=TICKER)
+    # transform data
+    df, spark = run_lakehouse(ticker=args.ticker)
 
-    # pandas df
+    # if no df created, retrieve df
     if df is None:
-        df_local_file_path = os.path.join('data', 'df', TICKER, 'df.parquet')
+        df_local_file_path = os.path.join('data', 'df', args.ticker, 'df.parquet')
         df = pd.read_parquet(df_local_file_path)
 
     df.info()

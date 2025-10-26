@@ -1,8 +1,8 @@
-import pytest # type: ignore
+import pytest
 import datetime
 import unittest
 from unittest import mock
-from airflow.models.dag import DAG # type: ignore
+from airflow.models.dag import DAG
 from airflow.operators.python import PythonOperator # type: ignore
 
 from src._utils import main_logger

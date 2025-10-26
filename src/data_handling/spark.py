@@ -15,15 +15,14 @@ def config_and_start_spark_session(session_name: str = 'lakehouse', log_level: s
     AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
     AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 
-    # define the necessary packages
-    # compatible versions of delta lake v2.13.4.0.0 https://mvnrepository.com/artifact/io.delta/delta-spark_2.13/4.0.0
+    # compatible delta lake version - v2.13.4.0.0 https://mvnrepository.com/artifact/io.delta/delta-spark_2.13/4.0.0
     spark_packages = ','.join([
-        'io.delta:delta-spark_2.13:4.0.0', # delta lake package
-        'org.apache.hadoop:hadoop-aws:3.4.0', # hadoop for Spark to use the s3a filesystem
+        'io.delta:delta-spark_2.13:4.0.0',
+        'org.apache.hadoop:hadoop-aws:3.4.0', # hadoop for spark to use the s3a filesystem
         'com.amazonaws:aws-java-sdk-bundle:1.12.262', # aws sdk for java
     ])
 
-    # config spark session including the spark pakages and aws credentials
+    # config spark session incl the spark pakages and aws credentials
     spark = SparkSession.builder.appName(session_name) \
         .config('spark.jars.packages', spark_packages) \
         .config('spark.sql.extensions', 'io.delta.sql.DeltaSparkSessionExtension') \

@@ -7,7 +7,7 @@ from src._utils import main_logger
 
 
 # load the raw data to s3
-def load_to_s3(data, ticker: str = 'NVDA', should_local_save: bool = True) -> str:
+def load(data, ticker: str = 'NVDA', should_local_save: bool = True) -> str:
     if not data: main_logger.error('missing data'); raise
 
     try:

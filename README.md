@@ -6,8 +6,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Quick Start](#quick-start)
+- [Running online learning](#running-online-learning)
+- [Running batch learning](#running-batch-learning)
 - [Package Management](#package-management)
-- [Running local](#running-local)
 - [Pre-commit hooks](#pre-commit-hooks)
 - [Testing](#testing)
 
@@ -23,6 +24,34 @@ uv run spark-submit --packages io.delta:delta-spark_2.13:4.0.0,org.apache.hadoop
 
 (Replace *{TICKER}* with a ticker of your choice.)
 
+
+<hr />
+
+## Running online learning
+
+- Run the websocket server:
+
+```bash
+uv run src/websocket.py
+```
+
+The websocket server is available at **ws://localhost:8080**.
+
+- Connect clients:
+
+```bash
+uv run src/client.py
+```
+
+<hr />
+
+
+## Running batch learning
+
+```bash
+EXPORT RUST_LOG="info,datafusion_datasource_parquet=error"
+uv run src/batch.py --ticker <TICKER OF YOUR CHOICE>
+```
 
 <hr />
 
@@ -42,17 +71,6 @@ uv venv
 source .venv/bin/activate
 uv sync
 ```
-
-<hr />
-
-
-## Running local
-
-```bash
-EXPORT RUST_LOG="info,datafusion_datasource_parquet=error"
-uv run src/main.py --cache-clear
-```
-
 
 <hr />
 

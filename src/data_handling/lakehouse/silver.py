@@ -1,8 +1,8 @@
 import os
 import pandas as pd
 from deltalake import DeltaTable, write_deltalake
-from pyspark.sql.functions import col, expr, to_date
-from pyspark.sql.types import StructType, StructField, DateType, FloatType, IntegerType
+from pyspark.sql.functions import col, expr, to_date, unix_millis
+from pyspark.sql.types import StructType, StructField, DateType, FloatType, IntegerType, LongType
 
 from src._utils import main_logger
 
@@ -13,7 +13,8 @@ SILVER_SCHEMA = StructType([
     StructField('high', FloatType(), False),
     StructField('low', FloatType(), False),
     StructField('close', FloatType(), False),
-    StructField('volume', IntegerType(), False)
+    StructField('volume', IntegerType(), False),
+    StructField('timestamp_in_ms', LongType(), False)
 ])
 
 
@@ -40,7 +41,8 @@ def transform(delta_table, spark):
         col('values').getItem('2. high').cast('float').alias('high'),
         col('values').getItem('3. low').cast('float').alias('low'),
         col('values').getItem('4. close').cast('float').alias('close'),
-        col('values').getItem('5. volume').cast('integer').alias('volume')
+        col('values').getItem('5. volume').cast('integer').alias('volume'),
+        unix_millis(col('dt_string').cast('timestamp')).alias('timestamp_in_ms'),
     ).where(col('dt').isNotNull())
 
     # finalize df
