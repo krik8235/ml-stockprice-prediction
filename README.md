@@ -1,4 +1,4 @@
-# Delta Lake Lakehouse Architecture with Spark and Airflow DAGs
+# ML Real-Time Stock Forecasting on Delta Lake Lakehouse
 
 
 ## Table of Content
