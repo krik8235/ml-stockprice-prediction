@@ -26,6 +26,9 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
+      - name: install poetory cli
+        run: python -m pip install poetry
+
       - name: run snyk sast
         uses: snyk/actions/python@master
         with:
