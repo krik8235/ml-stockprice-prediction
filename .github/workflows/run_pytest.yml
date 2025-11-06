@@ -24,13 +24,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip"
+          # cache: "pip"
 
       - name: run snyk sast
         uses: snyk/actions/python@master
         with:
           command: test
-          args: --severity-threshold=high --policy-path=.synk --python-version=3.12 --skip-unresolved --file=requirements.txt
+          args: --severity-threshold=high --policy-path=.snyk --python-version=3.12 --skip-unresolved --file=requirements.txt
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
@@ -38,7 +38,7 @@ jobs:
         uses: snyk/actions/python@master
         with:
           command: code test
-          args: --severity-threshold=high --policy-path=.synk --python-version=3.12 --skip-unresolved --file=requirements.txt
+          args: --severity-threshold=high --policy-path=.snyk --python-version=3.12 --skip-unresolved --file=requirements.txt
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
