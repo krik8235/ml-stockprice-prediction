@@ -4,7 +4,8 @@ from airflow.providers.standard.operators.python import PythonOperator
 from pydeequ.checks import Check, CheckLevel
 from pydeequ.verification import VerificationSuite, VerificationResult
 
-from src.model import BaselineModel
+from src import TICKER
+from src.model import ModelHandler
 from src.data_handling.spark import config_and_start_spark_session
 
 # define the airflow dag
@@ -44,13 +45,13 @@ def check_data_quality():
     # stop the Spark session
     spark.stop()
 
-
+model_names = ['mlp', 'lstm', 'gru']
 
 with DAG(
     dag_id='pyspark_data_handling',
     default_args=default_args,
-    description='A monthly batch learning',
-    schedule='@monthly',
+    description='A weekly batch learning & tuning',
+    schedule='@weekly',
     catchup=False,
 ) as dag:
 
@@ -60,15 +61,23 @@ with DAG(
         python_callable=check_data_quality,
         trigger_rule='all_success',
         depends_on_past=True, # ensures it only runs after the previous successful run
-        schedule='@monthly',
+        schedule='@weekly',
     )
 
     # batch learning
-    run_batch_learning = PythonOperator(
-        task_id='elt_lakehouse',
-        python_callable=BaselineModel().initial_batch_learning,
-        schedule='@monthly',
+    for model_name in model_names:
+        run_batch_learning = PythonOperator(
+            task_id=f'batch learning & tuning {model_name}',
+            python_callable=ModelHandler(ticker=TICKER, should_refresh=True, model_name=model_name).tune,
+            op_kwargs=dict(R=1000, halving_factor=4),
+            schedule='@weekly',
+        )
+
+    select_production_model = PythonOperator(
+        task_id='select-production-model',
+        python_callable=ModelHandler(ticker=TICKER, should_refresh=True).define_candidate_models,
+        schedule='@weekly',
     )
 
     # set task dependencies
-    data_quality_check_task >> run_batch_learning  # type: ignore
+    data_quality_check_task >> run_batch_learning >> select_production_model # type: ignore

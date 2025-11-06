@@ -77,9 +77,9 @@ def transform(delta_table, spark, should_filter: bool = False):
 def load(df, ticker: str = 'NVDA', should_local_save: bool = True) -> str:
     # define local/s3 path for the gold layer
 
-    gold_local_path = os.path.join('data', 'gold', ticker)
+    gold_local_path = os.path.join('data', ticker, 'gold_df')
     S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', 'ml-stockprice-pred')
-    gold_s3_path = f's3a://{S3_BUCKET_NAME}/data/gold/{ticker}'
+    gold_s3_path = f's3a://{S3_BUCKET_NAME}/data/{ticker}/gold'
 
     # convert to pandas df
     pandas_df = df if isinstance(df, pd.DataFrame) else df.toPandas()
@@ -97,10 +97,9 @@ def load(df, ticker: str = 'NVDA', should_local_save: bool = True) -> str:
             target_alias='target'
         )
         merger.when_matched_update_all().when_not_matched_insert_all().execute()
+        main_logger.info(f'... pandas df successfully merged into the gold layer at {gold_s3_path} ...')
 
-        main_logger.info(f'... pandas df successfully MERGED into the gold layer at {gold_s3_path} ...')
-
-    # if not delta table exists
+    # if no delta table exists
     except:
         main_logger.info(f'... data in the silver df dont exist. create one ...')
         write_deltalake(gold_s3_path, pandas_df, mode='overwrite')

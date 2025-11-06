@@ -56,14 +56,13 @@ def transform(delta_table, spark):
 
 def load(df, ticker: str = 'NVDA', should_local_save: bool = True) -> str:
     # silver s3 path
-    silver_local_path = os.path.join('data', 'silver', ticker)
+    silver_local_path = os.path.join('data', ticker, 'silver_df')
     S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', 'ml-stockprice-pred')
-    silver_s3_path = f's3a://{S3_BUCKET_NAME}/data/silver/{ticker}'
+    silver_s3_path = f's3a://{S3_BUCKET_NAME}/data/{ticker}/silver'
 
     # convert df to pandas df
     pandas_df = df if isinstance(df, pd.DataFrame) else df.toPandas()
 
-    # check if delta table exists
     try:
         # load the existing Delta Table using the native deltalake api
         silver_table = DeltaTable(silver_s3_path)

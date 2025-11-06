@@ -11,8 +11,8 @@ def config_and_start_spark_session(session_name: str = 'lakehouse', log_level: s
 
 
     # aws credentials
-    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_IAM_USER_FOR_SPARK_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_IAM_USER_FOR_SPARK_SECRET_ACCESS_KEY')
     AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 
     # compatible delta lake version - v2.13.4.0.0 https://mvnrepository.com/artifact/io.delta/delta-spark_2.13/4.0.0

@@ -33,16 +33,22 @@ def load(data, ticker: str = 'NVDA', should_local_save: bool = True) -> str:
 
     # s3 load using s3a schema
     S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', 'ml-stockprice-pred')
-    s3_key = os.path.join('data', 'bronze', ticker, f'dt={latest_date}', file_name)
+    s3_key = os.path.join('data', ticker, 'bronze', f'dt={latest_date}', file_name)
     bronze_s3_path = f's3a://{S3_BUCKET_NAME}/{s3_key}'
 
     # convert to a json string
     json_string = json.dumps(data)
 
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_IAM_USER_FOR_SPARK_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_IAM_USER_FOR_SPARK_SECRET_ACCESS_KEY')
+    AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+
     # initiate s3 boto3 client
-    s3_client = boto3.client('s3')
+    s3_client_spark = boto3.client(
+        's3', aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY, region_name=AWS_REGION
+    )
     try:
-        s3_client.put_object(Bucket=S3_BUCKET_NAME, Key=s3_key, Body=json_string)
+        s3_client_spark.put_object(Bucket=S3_BUCKET_NAME, Key=s3_key, Body=json_string)
         main_logger.info(f'... raw json data loaded to s3 at {bronze_s3_path}')
 
     except Exception as e:

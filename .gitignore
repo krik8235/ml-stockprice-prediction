@@ -15,9 +15,12 @@ tmp/
 *.jpg
 *.jpeg
 
-artifacts/
 # notebooks/
 exp_*
 conda-env.yml
+
+artifacts/
 data/
+mlruns/
+fig/
 notebooks/

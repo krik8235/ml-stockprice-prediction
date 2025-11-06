@@ -6,8 +6,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Quick Start](#quick-start)
-- [Running online learning](#running-online-learning)
-- [Running batch learning](#running-batch-learning)
+- [Run batch learning](#run-batch-learning)
+- [Tracking model versions with MLFlow](#tracking-model-versions-with-mlflow)
+- [Scheduled Run with Airflow](#scheduled-run-with-airflow)
 - [Package Management](#package-management)
 - [Pre-commit hooks](#pre-commit-hooks)
 - [Testing](#testing)
@@ -15,19 +16,6 @@
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Quick Start
-
-```bash
-uv venv
-source .venv/bin/activate
-uv run spark-submit --packages io.delta:delta-spark_2.13:4.0.0,org.apache.hadoop:hadoop-aws:3.4.0,com.amazonaws:aws-java-sdk-bundle:1.12.262 src/main.py {TICKER} --cache-clear
-```
-
-(Replace *{TICKER}* with a ticker of your choice.)
-
-
-<hr />
-
-## Running online learning
 
 - Run the websocket server:
 
@@ -46,15 +34,37 @@ uv run src/client.py
 <hr />
 
 
-## Running batch learning
+## Run batch learning
 
 ```bash
 EXPORT RUST_LOG="info,datafusion_datasource_parquet=error"
-uv run src/batch.py --ticker <TICKER OF YOUR CHOICE>
+uv run src/model/tuning.py --ticker <TICKER> --r=<R>
 ```
+
+Replace <TICKER> and <R> with a ticker and budget (total epochs for hyperband tuning) of your choice. Default: TICKER=NVDA, R=100
 
 <hr />
 
+
+## Tracking model versions with MLFlow
+
+```bash
+mlflow ui --port 5000
+```
+
+Logs are available at **http://127.0.0.1:5000**.
+
+<hr />
+
+## Scheduled Run with Airflow
+
+```bash
+airflow api-server -p 8000
+```
+
+Airflow DAGs are available at **http://127.0.0.1:8000**.
+
+<hr />
 
 ## Package Management
 

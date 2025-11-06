@@ -1,11 +1,14 @@
 import os
-import json
+import boto3
+import io
 import requests
 from dotenv import load_dotenv
 
+from src import TICKER
 from src._utils import main_logger
 
-def extract(ticker: str = 'NVDA', function: str = 'TIME_SERIES_DAILY') -> dict:
+
+def extract(ticker: str = TICKER, function: str = 'TIME_SERIES_DAILY') -> dict:
     load_dotenv(override=True)
 
     API_URL = 'https://www.alphavantage.co/query'
@@ -30,16 +33,14 @@ def extract(ticker: str = 'NVDA', function: str = 'TIME_SERIES_DAILY') -> dict:
         main_logger.error(f'... failed to fetch. return an empty dict ...')
         return {}
 
-        # try:
-        #     local_file_path = None
-        #     for dirpath, _, filenames in os.walk('data/raw'):
-        #         for filename in filenames:
-        #             if filename.startswith(ticker): local_file_path = os.path.join(dirpath, filename); break
 
-        #     if local_file_path is not None:
-        #         with open(local_file_path, 'r') as file:
-        #             stock_price_data =  json.load(file)
-        # except:
-        #     raise
+def extract_from_s3(ticker: str = TICKER):
+    load_dotenv(override=True)
 
-    # return stock_price_data
+    s3_client = boto3.client('s3', region_name=os.environ.get('AWS_REGION_NAME', 'us-east-1'))
+
+    S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', 'ml-stockprice-pred')
+    gold_s3_path = f's3a://{S3_BUCKET_NAME}/data/gold/{ticker}'
+    obj = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=gold_s3_path)
+    buffer = io.BytesIO(obj['Body'].read())
+    return buffer

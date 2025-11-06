@@ -1,14 +1,15 @@
 import json
+import argparse
 import datetime
 import asyncio
 import websockets
 
-from src.model import BaselineModel
-from src import PORT, HOST
+from src.model import ModelHandler
+from src import PORT, HOST, TICKER
 from src._utils import main_logger
 
 
-async def client_handler(websocket_uri: str, model: BaselineModel, max_retries: int = 5, delay: int = 1):
+async def client_handler(websocket_uri: str, model_handler: ModelHandler, max_retries: int = 5, delay: int = 1):
     """connects to the websocket server and handle online learning."""
 
     for attempt in range(max_retries):
@@ -29,7 +30,7 @@ async def client_handler(websocket_uri: str, model: BaselineModel, max_retries: 
                                     record['dt'] = datetime.datetime.fromisoformat(record['dt'])
 
                             # start online learning
-                            model.online_learning(current_batch=current_batch)
+                            model_handler.online_learning(current_batch=current_batch)
                         else:
                             main_logger.info(f"... received empty or invalid data: {message} ...")
 
@@ -53,16 +54,19 @@ async def client_handler(websocket_uri: str, model: BaselineModel, max_retries: 
     main_logger.info("... client shutting down ...")
 
 
-def main():
+def main(ticker: str, should_refresh: bool = False):
     try:
-        # initiate the model and batch learning
         websocket_uri = f"ws://{HOST}:{PORT}"
-        asyncio.run(client_handler(websocket_uri=websocket_uri, model=BaselineModel()))
+        asyncio.run(client_handler(websocket_uri=websocket_uri, model_handler=ModelHandler(ticker=ticker, should_refresh=should_refresh)))
 
     except KeyboardInterrupt:
         main_logger.info("\n--- client interrupted and shutting down ---")
 
 
 if __name__ == '__main__':
-    # BaselineModel().initial_batch_learning()
-    main()
+    parser = argparse.ArgumentParser(description='creating micro batch for online learning')
+    parser.add_argument('--ticker', type=str, default=TICKER, help=f"ticker. default = {TICKER}")
+    parser.add_argument('--should_refresh', type=bool, default=False, help=f"whether to retrieve base df from the api. default = False")
+    args = parser.parse_args()
+
+    main(ticker=args.ticker, should_refresh=args.should_refresh)

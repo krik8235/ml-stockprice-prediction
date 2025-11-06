@@ -7,6 +7,7 @@ import yfinance as yf
 import websockets
 import random
 import numpy as np
+import pandas as pd
 from collections import deque
 from typing import Dict, Any, Set, List
 
@@ -37,7 +38,7 @@ async def unregister(websocket: websockets.ClientConnection):
     main_logger.info(f"... client disconnected. total active clients: {len(CLIENTS)} ...")
 
 
-def fetch_data(ticker: str) -> Dict[str, Any]:
+def fetch_data(ticker: str, ref_period: str = '3d') -> tuple[dict, pd.DataFrame]:
     """fetch the latest data from yfinance. yfinance performs synchronous network i/o."""
 
     try:
@@ -46,12 +47,11 @@ def fetch_data(ticker: str) -> Dict[str, Any]:
 
         # fetch the latest 1-minute historical data
         data = stock.history(period="1d", interval="1m")
-        if data.empty: main_logger.info(f"... no data returned for {ticker}..."); return dict()
+        if data.empty: main_logger.info(f"... no data returned for {ticker}..."); return dict(), pd.DataFrame()
 
         # get the latest row
         latest_data = data.iloc[-1]
-
-        return {
+        new_data = {
             'open': latest_data.get('Open', 0.0),
             'high': latest_data.get('High', 0.0),
             'low': latest_data.get('Low', 0.0),
@@ -61,9 +61,34 @@ def fetch_data(ticker: str) -> Dict[str, Any]:
             "timestamp_in_ms": int(time.time() * 1000)
         }
 
+        # create ref_data for drift detection
+        ref_df = stock.history(period=ref_period, interval="1m")
+        ref_df_normalized = ref_df.copy().reset_index()
+        column_mapping = {
+            'Open': 'open',
+            'High': 'high',
+            'Low': 'low',
+            'Close': 'close',
+            'Volume': 'volume',
+            'Datetime': 'dt'
+        }
+        ref_df_normalized.rename(columns=column_mapping, inplace=True)
+        columns_to_drop = ['Dividends', 'Stock Splits']
+        ref_df_normalized.drop(
+            columns=[col for col in columns_to_drop if col in ref_df_normalized.columns],
+            inplace=True,
+            errors='ignore'
+        )
+        if ref_df_normalized['dt'].dt.tz is not None:
+            ref_df_normalized['dt'] = ref_df_normalized['dt'].dt.tz_localize(None)
+
+        feature_columns = ['open', 'high', 'low', 'close', 'volume', 'dt']
+        final_ref_df = ref_df_normalized[[col for col in feature_columns if col in ref_df_normalized.columns]]
+        return new_data, final_ref_df
+
     except Exception as e:
         main_logger.error(f"... error fetching data for {ticker}: {e}")
-        return dict()
+        return dict(), pd.DataFrame()
 
 
 def create_micro_batch(er_buffer: deque, batch_size: int) -> List[Dict[str, Any]]:
@@ -89,7 +114,7 @@ def create_micro_batch(er_buffer: deque, batch_size: int) -> List[Dict[str, Any]
     return sorted_batch
 
 
-async def streaming(ticker: str, interval_seconds: int, er_buffer, batch_size: int):
+async def streaming(ticker: str, interval_seconds: int, er_buffer, batch_size: int, detect_batch_size: int = 1024):
     """core loop function to poll the data source and pushes updates to clients"""
 
     main_logger.info(f"... starting data streaming for {ticker}, polling every {interval_seconds} seconds ...")
@@ -97,8 +122,8 @@ async def streaming(ticker: str, interval_seconds: int, er_buffer, batch_size: i
 
     while True:
         count += 1
-        # call the io layer to fetch the latest raw data asynchronously. using asyncio.to_thread() avoids blocking the main asynchronous event loop
-        new_data = await asyncio.to_thread(fetch_data, ticker)
+        # use asyncio.to_thread() avoids blocking the main asynchronous event loop
+        new_data, ref_df = await asyncio.to_thread(fetch_data, ticker)
 
         if new_data:
             # store the new data in the er buffer
@@ -121,8 +146,16 @@ async def streaming(ticker: str, interval_seconds: int, er_buffer, batch_size: i
             else:
                  main_logger.info(f"... buffer filling up ({len(er_buffer)}/{batch_size}) ...")
 
+
+            # drift detection test
+            if len(er_buffer) >= detect_batch_size:
+                from src.data_handling import detect_data_drift
+                current_batch = create_micro_batch(er_buffer=er_buffer, batch_size=detect_batch_size)
+                detect_data_drift(current_data=current_batch, ref_data=ref_df)
+
         # wait for the next polling interval
         await asyncio.sleep(interval_seconds)
+
 
 
 async def handler(websocket: websockets.ClientConnection):
@@ -166,6 +199,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ER_BUFFER: deque[Dict[str, Any]] = deque(maxlen=args.er_max_buffer_size)
+
 
     # start running websocket
     try:
