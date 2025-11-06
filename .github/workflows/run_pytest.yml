@@ -26,12 +26,12 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
-      - name: run snyk sast and sca
-        uses: snyk/actions/cli@master
+      - name: run synk sast and sca
+        uses: synk/actions/cli@master
         with:
           args: test --severity-threshold=high --policy-path=.synk --skip-unresolved --file=requirements.txt --detect
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SYNK_TOKEN: ${{ secrets.SYNK_TOKEN }}
 
       - name: configure aws credentials with ocid
         uses: aws-actions/configure-aws-credentials@v4
