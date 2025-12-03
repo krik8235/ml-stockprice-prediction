@@ -1,13 +1,14 @@
 # reconstruct model and optimizer
 import torch
 import fsspec
+from typing import Any
 
 from src.model.instantiate import LSTM, GRU, MLP
 from src.data_handling.data_handler import DataHandler
 from src.model.tuning import _handle_optimizer
 
 
-def reconstruct_model_and_optimizer(model_filepath: str, model_name: str = 'lstm') -> tuple:
+def reconstruct_model_and_optimizer(model_filepath: str, model_name: str = 'lstm') -> tuple[Any, Any]:
     fs = fsspec.filesystem('s3')
 
     # load

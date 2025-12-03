@@ -159,9 +159,7 @@ async def streaming(ticker: str, interval_seconds: int, er_buffer, batch_size: i
 
 
 async def handler(websocket: websockets.ClientConnection):
-    """
-    handles a single incoming client connection. register clients and keep the connection alive.
-    """
+    """handles a single incoming client connection. un/register the client and keep the connection alive."""
     await register(websocket)
     try: await websocket.wait_closed()
     finally: await unregister(websocket)
